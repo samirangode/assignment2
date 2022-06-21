@@ -9,8 +9,13 @@ from pytorch3d.ops import sample_points_from_meshes
 from pytorch3d.structures import Meshes
 import dataset_location
 import torch
+import mcubes
+import utils_viz
+import utils
+import imageio
 
 
+import matplotlib.pyplot as plt
 
 
 
@@ -20,10 +25,11 @@ def get_args_parser():
     parser.add_argument('--lr', default=4e-4, type=float)
     parser.add_argument('--max_iter', default=100000, type=int)
     parser.add_argument('--log_freq', default=1000, type=int)
-    parser.add_argument('--type', default='vox', choices=['vox', 'point', 'mesh'], type=str)
+    parser.add_argument('--type', default='vox', choices=['vox', 'point', 'mesh', 'test'], type=str)
     parser.add_argument('--n_points', default=5000, type=int)
     parser.add_argument('--w_chamfer', default=1.0, type=float)
     parser.add_argument('--w_smooth', default=0.1, type=float)
+    # parser.add_argument('--output_path', type = str)
     return parser
 
 def fit_mesh(mesh_src, mesh_tgt, args):
@@ -130,9 +136,54 @@ def train_model(args):
         voxels_src = torch.rand(feed_cuda['voxels'].shape,requires_grad=True,device='cuda')
         voxel_coords = feed_cuda['voxel_coords'].unsqueeze(0)
         voxels_tgt = feed_cuda['voxels']
+        # print("###################")
+        # print(voxels_src, "voxels_src")
+        # print("####################")
+        # print(voxels_tgt, "voxels_tgt")
+        voxels_src = voxels_src.cpu().detach().squeeze(0)
+        voxels_tgt = voxels_tgt.cpu().detach().squeeze(0)
+        # print(voxels_src.shape)
+        # print(voxels_tgt.shape)
+        # image_src = utils_viz.visualize_mesh(voxels_src,voxel_size= voxels_src.shape[0])
+        # plt.imshow(image_src)
+        # image_tgt = utils_viz.visualize_mesh(voxels_tgt, voxel_size= voxels_tgt.shape[0])
+        image_list = utils_viz.visualize(data=voxels_tgt,type="voxel", device = utils.get_device())
+        imageio.mimsave("voxel_tgt.gif", image_list, fps=20)
 
-        # fitting
+        
+        # plt.imshow(image_tgt)
+        # plt.show()
+        # # fitting
+        # vertices, faces = mcubes.marching_cubes(mcubes.smooth(voxels), isovalue=0)
+        # vertices = torch.tensor(vertices).float()
+        # faces = torch.tensor(faces.astype(int))
+        # # Vertex coordinates are indexed by array position, so we need to
+        # # renormalize the coordinate system.
+        # vertices = (vertices / voxel_size) * (max_value - min_value) + min_value
+        # textures = (vertices - vertices.min()) / (vertices.max() - vertices.min())
+        # textures = pytorch3d.renderer.TexturesVertex(vertices.unsqueeze(0))
+
+        # mesh = pytorch3d.structures.Meshes([vertices], [faces], textures=textures).to(
+        #     device
+        # )
+        # lights = pytorch3d.renderer.PointLights(location=[[0, 0.0, -4.0]], device=device,)
+        # renderer = get_mesh_renderer(image_size=image_size, device=device)
+        # R, T = pytorch3d.renderer.look_at_view_transform(dist=3, elev=0, azim=180)
+        # cameras = pytorch3d.renderer.FoVPerspectiveCameras(R=R, T=T, device=device)
+        # rend = renderer(mesh, cameras=cameras, lights=lights)
+        
+        ########################
+        voxels_src = torch.rand(feed_cuda['voxels'].shape,requires_grad=True,device='cuda')
+        voxel_coords = feed_cuda['voxel_coords'].unsqueeze(0)
+        voxels_tgt = feed_cuda['voxels']
         fit_voxel(voxels_src, voxels_tgt, args)
+        voxels_src = voxels_src.cpu().detach().squeeze(0)
+        # image_src_optimized = utils_viz.visualize_mesh(voxels_src)
+        # plt.imshow(image_src_optimized)
+        # plt.show()
+        image_list = utils_viz.visualize(data=voxels_src,type="voxel", device = utils.get_device())
+        imageio.mimsave("voxel_src.gif", image_list, fps=20)
+        print(utils.get_device())
 
 
     elif args.type == "point":
@@ -140,10 +191,24 @@ def train_model(args):
         pointclouds_src = torch.randn([1,args.n_points,3],requires_grad=True,device='cuda')
         mesh_tgt = Meshes(verts=[feed_cuda['verts']], faces=[feed_cuda['faces']])
         pointclouds_tgt = sample_points_from_meshes(mesh_tgt, args.n_points)
-
         # fitting
-        fit_pointcloud(pointclouds_src, pointclouds_tgt, args)        
-    
+        # print(pointclouds_tgt.shape)
+        # for i in pointclouds_tgt:
+        #     print(i)
+        # pointclouds_tgt = pointclouds_tgt.squeeze(0)
+        # print(pointclouds_tgt["verts"].shape)
+        # print(pointclouds_tgt.shape)
+        
+        image_list = utils_viz.visualize(data=pointclouds_tgt[::50],type="point_cloud", device = utils.get_device())
+        imageio.mimsave("point_cloud_tgt.gif", image_list, fps=20)
+        # pointclouds_tgt = pointclouds_tgt.unsqueeze(0)
+
+        fit_pointcloud(pointclouds_src, pointclouds_tgt, args)
+        # pointclouds_src = pointclouds_src.squeeze(0)
+        image_list = utils_viz.visualize(data=pointclouds_src[::50].detach(),type="point_cloud", device = utils.get_device())
+        imageio.mimsave("point_cloud_src.gif", image_list, fps=20)        
+        # pointclouds_src = pointclouds_src.unsqueeze(0)
+
     elif args.type == "mesh":
         # initialization
         # try different ways of initializing the source mesh        
@@ -151,7 +216,23 @@ def train_model(args):
         mesh_tgt = Meshes(verts=[feed_cuda['verts']], faces=[feed_cuda['faces']])
 
         # fitting
-        fit_mesh(mesh_src, mesh_tgt, args)        
+        image_list = utils_viz.visualize(vertices=mesh_tgt.verts_packed(), faces=mesh_tgt.faces_packed(),type="mesh", image_size=512,device=utils.get_device())
+        imageio.mimsave("mesh_tgt.gif", image_list, fps = 20)
+        fit_mesh(mesh_src, mesh_tgt, args)
+        image_list = utils_viz.visualize(vertices=mesh_src.detach().verts_packed(), faces=mesh_src.detach().faces_packed(),type="mesh", image_size=512,device=utils.get_device())
+        imageio.mimsave("mesh_src.gif", image_list, fps = 20)
+
+    elif args.type == "test":
+        #get the maximum
+        voxels_src = torch.rand(feed_cuda['voxels'].shape,requires_grad=True,device='cuda')
+        print(voxels_src.shape)
+        print(voxels_src[0])
+        print(torch.max(voxels_src,dim = 1))
+        print(torch.max(voxels_src,dim = 2))
+        print(torch.max(voxels_src,dim = 3))
+
+
+
 
 
     
