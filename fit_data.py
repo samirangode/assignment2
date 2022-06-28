@@ -176,6 +176,9 @@ def train_model(args):
         voxels_src = torch.rand(feed_cuda['voxels'].shape,requires_grad=True,device='cuda')
         voxel_coords = feed_cuda['voxel_coords'].unsqueeze(0)
         voxels_tgt = feed_cuda['voxels']
+        print(voxels_src.shape)
+        print(voxels_src)
+
         fit_voxel(voxels_src, voxels_tgt, args)
         voxels_src = voxels_src.cpu().detach().squeeze(0)
         # image_src_optimized = utils_viz.visualize_mesh(voxels_src)
@@ -218,6 +221,7 @@ def train_model(args):
         # fitting
         image_list = utils_viz.visualize(vertices=mesh_tgt.verts_packed(), faces=mesh_tgt.faces_packed(),type="mesh", image_size=512,device=utils.get_device())
         imageio.mimsave("mesh_tgt.gif", image_list, fps = 20)
+        print(mesh_tgt, "mesh target")
         fit_mesh(mesh_src, mesh_tgt, args)
         image_list = utils_viz.visualize(vertices=mesh_src.detach().verts_packed(), faces=mesh_src.detach().faces_packed(),type="mesh", image_size=512,device=utils.get_device())
         imageio.mimsave("mesh_src.gif", image_list, fps = 20)

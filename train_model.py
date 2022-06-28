@@ -14,15 +14,15 @@ def get_args_parser():
     # Model parameters
     parser.add_argument('--arch', default='resnet18', type=str)
     parser.add_argument('--lr', default=4e-4, type=str)
-    parser.add_argument('--max_iter', default=10000, type=str)
+    parser.add_argument('--max_iter', default=10000, type=int)
     parser.add_argument('--log_freq', default=1000, type=str)
-    parser.add_argument('--batch_size', default=2, type=str)
+    parser.add_argument('--batch_size', default=2, type=int)
     parser.add_argument('--num_workers', default=0, type=str)
     parser.add_argument('--type', default='vox', choices=['vox', 'point', 'mesh'], type=str)
     parser.add_argument('--n_points', default=5000, type=int)
     parser.add_argument('--w_chamfer', default=1.0, type=float)
     parser.add_argument('--w_smooth', default=0.1, type=float)
-    parser.add_argument('--save_freq', default=10000, type=int)    
+    parser.add_argument('--save_freq', default=100, type=int)    
     parser.add_argument('--load_checkpoint', action='store_true')            
     return parser
 
@@ -101,7 +101,8 @@ def train_model(args):
         read_time = time.time() - read_start_time
 
         prediction_3d = model(images_gt, args)
-
+        # print(prediction_3d.shape, "prediction_3d shape")
+        # print(ground_truth_3d.shape, "ground_truth_3d shape")
         loss = calculate_loss(prediction_3d, ground_truth_3d, args)
 
         optimizer.zero_grad()

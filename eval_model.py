@@ -10,6 +10,9 @@ from pytorch3d.ops import sample_points_from_meshes
 from pytorch3d.ops import knn_points
 import mcubes
 import utils_vox
+import utils_viz
+import utils
+import imageio
 
 def get_args_parser():
     parser = argparse.ArgumentParser('Singleto3D', add_help=False)
@@ -68,11 +71,19 @@ def compute_sampling_metrics(pred_points, gt_points, thresholds= [0.01, 0.02, 0.
     metrics = {k: v.cpu() for k, v in metrics.items()}
     return metrics
 
-def evaluate(predictions, mesh_gt, args):
+def evaluate(predictions, mesh_gt, args, iter):
     if args.type == "vox":
         voxels_src = predictions
+        print(predictions.shape, "shape predictions")
+        # image_list = utils_viz.visualize_voxel(voxels_src,image_size=512)
+        # imageio.mimsave("voxel_src.gif", image_list, fps=20)
         H,W,D = voxels_src.shape[2:]
         vertices_src, faces_src = mcubes.marching_cubes(voxels_src.detach().cpu().squeeze().numpy(), isovalue=0.5)
+        if( iter %10 == 0):
+            input_bla = voxels_src[0,0].cpu().detach().numpy()
+            print(input_bla.shape)
+            image_list = utils_viz.visualize(data=input_bla,image_size=512,type="voxel",voxel_size=32)
+            imageio.mimsave("voxel_trained_src.gif", image_list, fps=20)
         vertices_src = torch.tensor(vertices_src).float()
         faces_src = torch.tensor(faces_src.astype(int))
         mesh_src = pytorch3d.structures.Meshes([vertices_src], [faces_src])
@@ -80,9 +91,14 @@ def evaluate(predictions, mesh_gt, args):
         pred_points = utils_vox.Mem2Ref(pred_points, H, W, D)
     elif args.type == "point":
         pred_points = predictions.cpu()
+        if( iter %10 == 0):
+            image_list = utils_viz.visualize(data=pred_points.detach().cpu(),type="point_cloud", device = utils.get_device())
+            imageio.mimsave("point_cloud_trained_src.gif", image_list, fps=20)
     elif args.type == "mesh":
         pred_points = sample_points_from_meshes(predictions, args.n_points).cpu()
-
+        if( iter %10 == 0):
+            image_list = utils_viz.visualize(vertices=predictions.detach().cpu().verts_packed(), faces=predictions.detach().cpu().faces_packed(),type="mesh", image_size=512,device=utils.get_device())
+            imageio.mimsave("mesh_tgt_trained.gif", image_list, fps = 20)
     gt_points = sample_points_from_meshes(mesh_gt, args.n_points)
         
     metrics = compute_sampling_metrics(pred_points, gt_points)
@@ -134,7 +150,7 @@ def evaluate_model(args):
         if args.type == "vox":
             predictions = predictions.permute(0,1,4,3,2)
 
-        metrics = evaluate(predictions, mesh_gt, args)
+        metrics = evaluate(predictions, mesh_gt, args, step)
 
         # TODO:
         # if (step % args.vis_freq) == 0:

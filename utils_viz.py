@@ -105,7 +105,7 @@ def visualize_mesh(vertices, faces, image_size=256, color=[0.7, 0.7, 1], device=
     rend = rend.cpu().numpy()[0, ..., :3]  # (B, H, W, 4) -> (H, W, 3)
     return rend    
 
-def visualize(data = None, vertices = None, faces = None, type= None, image_size = 256,voxel_size=64, device=None):
+def visualize(data = None, vertices = None, faces = None, type= None, image_size = 512,voxel_size=32, device=None):
 
     image_list = []
     for i in range(0,360,4):
